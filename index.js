@@ -18,8 +18,14 @@ app.use("/", (req, res) => {
 
 io.on('connection', (socket) => {
   console.log('a user connected');
-  //socket.emit("event name", message)
-  socket.emit("hello from server", "HIHI")
+  
+  socket.on("chatting-message", (msg)=> {
+    io.emit("chatting-message", msg)
+  })
+
+  socket.on('disconnect', () => {
+    console.log('user disconnected');
+  });
 });
 
 server.listen(8080, () => {
