@@ -19,8 +19,11 @@ app.use("/", (req, res) => {
 io.on('connection', (socket) => {
   console.log('a user connected');
   
+  //listen to if a client send a message to server
   socket.on("chatting-message", (msg)=> {
-    io.emit("chatting-message", msg)
+    console.log({msg})
+    console.log(socket.id)
+    io.emit("chatting-message", {user: msg.user, message: msg.message})
   })
 
   socket.on('disconnect', () => {
