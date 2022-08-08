@@ -12,38 +12,77 @@ const io = new Server(server, {
   }
 });
 
-let users = []
+let activeUsers = [];
+const addUser = (userId, socketId) => {
+  !activeUsers.some(user => user.id === userId) &&
+  activeUsers.push({userId, socketId})
+}
 
-app.use("/", (req, res) => {
-  res.send("Welcome!")
-})
+const removeUser = (socketId) => {
+  activeUsers = activeUsers.filter(user => user.socketId !== socketId)
+}
 
-//run when a client connects
-io.on('connection', (socket) => {
-  
-  
-  socket.on('join', ({username, room}) => {
-    console.log(username, room)
-    const user = {
-      username,
-      id: socket.id,
-      room
-    }
-    users.push(user)
-    socket.join(room)
+// io.on("connection", (socket) => {
+//   // add new User
+//   socket.on("new-user-add", (newUserId) => {
+//     // if user is not added previously
+//     if (!activeUsers.some((user) => user.userId === newUserId)) {
+//       activeUsers.push({ userId: newUserId, socketId: socket.id });
+//       console.log("New User Connected", activeUsers);
+//     }
+//     // send all active users to new user
+//     io.emit("get-users", activeUsers);
+//   });
+
+//   socket.on("disconnect", () => {
+//     // remove user from active users
+//     activeUsers = activeUsers.filter((user) => user.socketId !== socket.id);
+//     console.log("User Disconnected", activeUsers);
+//     // send all active users to all users 
+//     io.emit("get-users", activeUsers);
+//   });
+
+//   // send message to a specific user
+//   socket.on("send-message", (data) => {
+//     const { receiverId } = data;
+//     const user = activeUsers.find((user) => user.userId === receiverId);
+//     console.log("Sending from socket to :", receiverId)
+//     console.log("Data: ", data)
+//     if (user) {
+//       console.log(user)
+//       io.emit("recieve-message", data);
+//     }
+//   });
+// });
+
+io.on('connect', (socket)=> {
+  console.log("A user conncted!")
+
+  socket.on('addUser', (userId) => {
+    console.log(`${userId} is online`)
+
+    addUser(userId, socket.id)
+    io.emit('getUsers', activeUsers)
   })
 
-   //listen to if a client send a message to server
-  socket.on("chatting-message", (msg)=> {
-    const user = users.find(user => user.username === msg.username)
-    io.to(user.room).emit("chatting-message", msg)
+  socket.on('sendMessage', ({senderId, receiverId, message}) => {
+    //find the receiver
+    const receiver = activeUsers.find(user => user.userId === receiverId)
+    console.log("receiver: ", receiver, message)
+    activeUsers.length > 0 && io.to(receiver.socketId).emit('getMessage', {
+      senderId,
+      message
+    })
   })
-  socket.on('disconnect', () => {
-    console.log('user disconnected');
+
+  socket.on("disconnect", () => {
+    // remove user from active users
+    removeUser(socket.id)
+    console.log("User Disconnected");
+    // send all active users to all users 
+    io.emit("getUsers", activeUsers);
   });
-
- 
-});
+})
 
 server.listen(8080, () => {
   console.log('listening on *:8000');
